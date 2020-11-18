@@ -81,12 +81,16 @@ if (!empty($hookmanager->resPrint)) {
     text-align: left;
 }
 </style>
+
 <center>
 <font size="4">
-<?php echo '<b>'.$mysoc->name.'</b>'; ?>
+//<?php print '<img src="logo2.png" alt="Logo" />';?>
+//<br>
+<?php echo '<b>'.$mysoc->name.'</b>';?>
 </font>
 </center>
 <br>
+
 <p class="left">
 <?php
 if (!empty($conf->global->TAKEPOS_HEADER))
@@ -177,19 +181,29 @@ if ($conf->global->TAKEPOS_SHOW_CUSTOMER)
 <tr>
 	<th class="right"><?php echo ''.$langs->trans("TotalTTC").'</th><td class="right">'.price($object->total_ttc, 1, '', 1, - 1, - 1, $conf->currency)."\n"; ?></td>
 </tr>
+<?php if (!empty($object->note)) { ?>
+        <tr>
+                <th align="right"><?php echo "Rendu" ?></th>
+                <td align="right"><?php echo price($object->note, 1, '', 1, - 1, - 1, $conf->currency)."\n"; ?></td> 
+        </tr>
+<?php } ?>
 </table>
 <div style="border-top-style: double;">
+
+
+
 <br>
 <br>
 <br>
+<center>
 <?php
 if (!empty($conf->global->TAKEPOS_FOOTER))
 {
 	$substitutionarray = getCommonSubstitutionArray($langs);
 	$newfreetext = make_substitutions($conf->global->TAKEPOS_FOOTER, $substitutionarray);
 	echo $newfreetext;
-}
-?>
+} ?>
+<\center>
 
 <script type="text/javascript">
     window.print();

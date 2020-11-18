@@ -219,6 +219,20 @@ div.wrapper2{
 	background-color:#fff;
 }
 
+div.wrapper3{
+        float:left; /* important */
+        position:relative; /* important(so we can absolutely position the description div */
+        width:25%;
+        height:16.6%;
+        margin:0;
+        /* padding:1px; */
+        border: 2px solid #EEE;
+        /*box-shadow: 3px 3px 3px #bbb;*/
+        text-align: center;
+        box-sizing: border-box;
+        background-color:#fff;
+}
+
 img.imgwrapper {
     max-width: 100%;
 }

@@ -112,6 +112,7 @@ if ($invoice->id > 0)
 }
 $alreadypayed = (is_object($invoice) ? ($invoice->total_ttc - $remaintopay) : 0);
 
+
 if ($conf->global->TAKEPOS_NUMPAD == 0) print "var received='';";
 else print "var received=0;";
 
@@ -177,9 +178,10 @@ else print "var received=0;";
 	{
 		var invoiceid = <?php echo ($invoiceid > 0 ? $invoiceid : 0); ?>;
 		var amountpayed = $("#change1").val();
-		if (amountpayed > <?php echo $invoice->total_ttc; ?>) {
-			amountpayed = <?php echo $invoice->total_ttc; ?>;
-		}
+//FJA
+//		if (amountpayed > <?php echo $invoice->total_ttc; ?>) {
+//			amountpayed = <?php echo $invoice->total_ttc; ?>;
+//		}
 		console.log("We click on the payment mode to pay amount = "+amountpayed);
 		parent.$("#poslines").load("invoice.php?place=<?php echo $place; ?>&action=valid&pay="+payment+"&amount="+amountpayed+"&invoiceid="+invoiceid, function() {
 		    if (amountpayed > <?php echo $remaintopay; ?> || amountpayed == <?php echo $remaintopay; ?> || amountpayed==0 ) parent.$.colorbox.close();
@@ -196,6 +198,7 @@ else print "var received=0;";
             amountpayed = <?php echo $invoice->total_ttc; ?>;
         }
 
+ 
         // Starting sumup app
         window.open('sumupmerchant://pay/1.0?affiliate-key=<?php echo $conf->global->TAKEPOS_SUMUP_AFFILIATE ?>&app-id=<?php echo $conf->global->TAKEPOS_SUMUP_APPID ?>&total=' + amountpayed + '&currency=EUR&title=' + invoiceid + '&callback=<?php echo DOL_MAIN_URL_ROOT ?>/takepos/smpcb.php');
 
@@ -351,6 +354,8 @@ foreach ($action_buttons as $button) {
     $newclass = $class.($button["class"] ? " ".$button["class"] : "");
 	print '<button type="button" class="'.$newclass.'" onclick="'.$button["function"].'"><span '.$button["span"].'>'.$button["text"].'</span></button>';
 }
+//print '<button type="button" class="calcbutton" onclick="OpenDrawer();">'Tiroir'</button>';
+
 ?>
 </div>
 

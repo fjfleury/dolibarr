@@ -1,3 +1,4 @@
+
 <?php
 /* Copyright (C) 2018	Andreu Bisquerra	<jove@bisquerra.com>
  * Copyright (C) 2019	Josep Lluís Amador	<joseplluis@lliuretic.cat>
@@ -250,6 +251,7 @@ function MoreCategories(moreorless) {
 function LoadProducts(position, issubcat) {
 	console.log("LoadProducts");
 	var maxproduct = <?php echo ($MAXPRODUCT - 2); ?>;
+	var iFormat=0;
 
 	if (position=="supplements") currentcat="supplements";
 	else
@@ -272,10 +274,17 @@ function LoadProducts(position, issubcat) {
 			$("#proimg"+ishow).attr("src","genimg/index.php?query=cat&id="+val.rowid);
 			$("#prodiv"+ishow).data("rowid",val.rowid);
 			$("#prodiv"+ishow).data("iscat",1);
+		 $("#prodiv"+ishow).attr("class","wrapper2 divempty");
+		iFormat=0;
 			$("#prowatermark"+ishow).show();
 			ishow++;
 		}
 	});
+
+				 $("#prodiv22").attr("class","wrapper2 divempty");
+                                 $("#prodiv23").attr("class","wrapper2 divempty");
+                                 $("#prowatermark22").show();
+                                 $("#prowatermark23").show();
 
 	idata=0; //product data counter
 	$.getJSON('<?php echo DOL_URL_ROOT ?>/takepos/ajax/ajax.php?action=getProducts&category='+currentcat, function(data) {
@@ -293,6 +302,8 @@ function LoadProducts(position, issubcat) {
 				$("#proimg"+ishow).attr("src","genimg/empty.png");
 				$("#prodiv"+ishow).data("rowid","");
 				$("#prodiv"+ishow).attr("class","wrapper2 divempty");
+				if (iFormat==0)  $("#prodiv"+ishow).attr("class","wrapper2 divempty");
+				else $("#prodiv"+ishow).attr("class","wrapper3 divempty");
 				$("#prowatermark"+ishow).hide();
 				ishow++; //Next product to show after print data product
 			}
@@ -312,9 +323,15 @@ function LoadProducts(position, issubcat) {
 				$("#proimg"+ishow).attr("src", "genimg/index.php?query=pro&id="+data[idata]['id']);
 				$("#prodiv"+ishow).data("rowid", data[idata]['id']);
 				$("#prodiv"+ishow).data("iscat", 0);
-				$("#prodiv"+ishow).attr("class","wrapper2");
+				iFormat=1;
+				$("#prodiv"+ishow).attr("class","wrapper3");
 				$("#prowatermark"+ishow).hide();
 				ishow++; //Next product to show after print data product
+
+			 $("#prodiv22").attr("class","wrapper3 divempty");
+			 $("#prodiv23").attr("class","wrapper3 divempty");
+			 $("#prowatermark22").hide();
+			 $("#prowatermark23").hide();
 			}
 			//console.log("Hide the prowatermark for ishow="+ishow);
 			idata++; //Next data everytime
@@ -426,6 +443,13 @@ function Reduction() {
 	$.colorbox({href:"reduction.php?place="+place+"&invoiceid="+invoiceid, width:"80%", height:"90%", transition:"none", iframe:"true", title:""});
 }
 
+function Tare() {
+        invoiceid = $("#invoiceid").val();
+        console.log("Open popup to enter reductiotare on invoiceid="+invoiceid);
+        $.colorbox({href:"tare.php?place="+place+"&invoiceid="+invoiceid, width:"80%", height:"90%", transition:"none", iframe:"true", title:""});
+}
+
+
 function CloseBill() {
 	invoiceid = $("#invoiceid").val();
 	console.log("Open popup to enter payment on invoiceid="+invoiceid);
@@ -488,11 +512,33 @@ function Search2(keyCodeForEnter) {
 
 	var search = false;
 	var eventKeyCode = window.event.keyCode;
+        var weight = "";
+	var wid = "";
+
 	if (typeof keyCodeForEnter === 'undefined' || eventKeyCode == keyCodeForEnter) {
 		search = true;
 	}
-
 	if (search === true) {
+                weight = $('#search').val()
+                if (weight.length>25)
+//              if (weight.substring(0,10)== $conf->global->TAKEPOS_SCALE_ID && (weight.length>30))
+                {
+                    wid =weight.substring(0,(weight.search(",")));
+//                    console.log("wid "+wid.substring(wid.length-4));
+                    if   (wid.substring(wid.length-4)=="1030" || wid.substring(wid.length-4)=="0308" )
+                    {
+                        weight = weight.substring(wid.length+1,weight.length-wid.length-1);
+                        //console.log(weight);
+                        weight= weight.substring(0,(weight.search(",")));
+                        console.log("weight "+weight);
+				if (typeof(selectedtext) != "undefined") 
+   		            	{
+				$("#poslines").load("invoice.php?action=updateqty&place="+place+"&idline="+selectedline+"&number="+weight);
+				}
+				ClearSearch();
+			}
+		        return;
+	        }
 		pageproducts = 0;
 		jQuery(".wrapper2 .catwatermark").hide();
 		$.getJSON('<?php echo DOL_URL_ROOT ?>/takepos/ajax/ajax.php?action=search&term=' + $('#search').val(), function (data) {
@@ -530,21 +576,33 @@ function Search2(keyCodeForEnter) {
 					ClickProduct(0);
 				}
 			}
+
 		});
 	}
 }
 
 function Edit(number) {
 
-	if (typeof(selectedtext) == "undefined") return;	// We click on an action on the number pad but there is no line selected
-
     var text=selectedtext+"<br> ";
 
     if (number=='c'){
-        editnumber="";
+       if (editnumber=="" )
+	{
+		editaction="";
+		console.log("Cancel action")
+	        $("#qty").html("<?php echo $langs->trans("Qty"); ?>");
+	        $("#price").html("<?php echo $langs->trans("Price"); ?>");
+        	$("#tare").html("tare");
+	}
+       editnumber="";
+
         Refresh();
+
         return;
     }
+
+    if (typeof(selectedtext) == "undefined") return;        // We click on an action on the number pad but there is no line selected
+
     else if (number=='qty'){
     	console.log("Edit "+number);
         if (editaction=='qty' && editnumber!=""){
@@ -593,27 +651,65 @@ function Edit(number) {
             editaction="r";
         }
     }
+    else if (number=='t'){
+        console.log("Edit "+number);
+        if (editaction=='t' && editnumber!=""){
+            $("#poslines").load("invoice.php?action=updateqty&place="+place+"&idline="+selectedline+"&number=-"+editnumber, function() {
+                editnumber="";
+                //$('#poslines').scrollTop($('#poslines')[0].scrollHeight);
+                $("#tare").html("<?php echo $langs->trans("Tare"); ?>");
+            });
+
+            ClearSearch();
+            return;
+        }
+        else {
+            editaction="t";
+        }
+    }
     else {
         editnumber=editnumber+number;
     }
+
     if (editaction=='qty'){
         text=text+"<?php echo $langs->trans("Modify")." -> ".$langs->trans("Qty").": "; ?>";
         $("#qty").html("OK");
         $("#price").html("<?php echo $langs->trans("Price"); ?>");
-        $("#reduction").html("<?php echo $langs->trans("ReductionShort"); ?>");
+        $("#tare").html("tare");
+//        $("#reduction").html("<?php echo $langs->trans("ReductionShort"); ?>");
     }
+
     if (editaction=='p'){
         text=text+"<?php echo $langs->trans("Modify")." -> ".$langs->trans("Price").": "; ?>";
         $("#qty").html("<?php echo $langs->trans("Qty"); ?>");
         $("#price").html("OK");
-        $("#reduction").html("<?php echo $langs->trans("ReductionShort"); ?>");
+        $("#tare").html("tare");
+//        $("#re//        $("#reduction").html("<?php echo $langs->trans("ReductionShort"); ?>");
     }
+
     if (editaction=='r'){
         text=text+"<?php echo $langs->trans("Modify")." -> ".$langs->trans("ReductionShort").": "; ?>";
         $("#qty").html("<?php echo $langs->trans("Qty"); ?>");
         $("#price").html("<?php echo $langs->trans("Price"); ?>");
         $("#reduction").html("OK");
     }
+
+    if (editaction=='t'){
+        text=text+"<?php echo $langs->trans("Modify")." -> ".$langs->trans("Tare").": "; ?>";
+        $("#qty").html("<?php echo $langs->trans("Qty"); ?>");
+        $("#price").html("<?php echo $langs->trans("Price"); ?>");
+        $("#tare").html("OK");
+    }
+
+    if (editaction==""){
+console.log("clear action");
+//        text=text+"<?php echo $langs->trans("Modify")." -> ".$langs->trans("Tare").": "; ?>";
+        $("#qty").html("<?php echo $langs->trans("Qty"); ?>");
+        $("#price").html("<?php echo $langs->trans("Price"); ?>");
+        $("#tare").html("tare");
+
+    }
+
     $('#'+selectedline).find("td:first").html(text+editnumber);
 }
 
@@ -813,7 +909,7 @@ if (empty($conf->global->TAKEPOS_HIDE_HEAD_BAR)) {
 			<button type="button" class="calcbutton" onclick="Edit(1);">1</button>
 			<button type="button" class="calcbutton" onclick="Edit(2);">2</button>
 			<button type="button" class="calcbutton" onclick="Edit(3);">3</button>
-			<button type="button" id="reduction" class="calcbutton2" onclick="Edit('r');"><?php echo $langs->trans("ReductionShort"); ?></button>
+                        <button type="button" id="tare" class="calcbutton2" onclick="Edit('t');"><?php echo $langs->trans("Tare"); ?></button>
 			<button type="button" class="calcbutton" onclick="Edit(0);">0</button>
 			<button type="button" class="calcbutton" onclick="Edit('.');">.</button>
 			<button type="button" class="calcbutton poscolorblue" onclick="Edit('c');">C</button>

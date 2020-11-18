@@ -140,6 +140,8 @@ else $soc->fetch($conf->global->$constforcompanyid);
  * Actions
  */
 
+
+
 if ($action == 'valid' && $user->rights->facture->creer)
 {
     if ($pay == "cash") $bankaccount = $conf->global->{'CASHDESK_ID_BANKACCOUNT_CASH'.$_SESSION["takeposterminal"]};            // For backward compatibility
@@ -215,6 +217,7 @@ if ($action == 'valid' && $user->rights->facture->creer)
 	}
 	else
 	{
+
 	    $res = $invoice->validate($user);
 	}
 
@@ -224,27 +227,32 @@ if ($action == 'valid' && $user->rights->facture->creer)
 	//	$conf->global->FACTURE_ADDON = $sav_FACTURE_ADDON;
 	//}
 
+	$remaintopay = $invoice->getRemainToPay();
+
 	// Add the payment
-	if ($res >= 0) {
-		$remaintopay = $invoice->getRemainToPay();
-		if ($remaintopay > 0) {
-			$payment = new Paiement($db);
-			$payment->datepaye = $now;
-			$payment->fk_account = $bankaccount;
-			$payment->amounts[$invoice->id] = $amountofpayment;
+	if ($res >= 0 && $remaintopay > 0) {
+		$payment = new Paiement($db);
+		$payment->datepaye = $now;
+		$payment->fk_account = $bankaccount;
+		$payment->amounts[$invoice->id] = $amountofpayment;
 
-			// If user has not used change control, add total invoice payment
-			// Or if user has used change control and the amount of payment is higher than remain to pay, add the remain to pay
-			if ($amountofpayment == 0 || $amountofpayment > $remaintopay) $payment->amounts[$invoice->id] = $remaintopay;
+		// If user has not used change control, add total invoice payment
+		// Or if user has used change control and the amount of payment is higher than remain to pay, add the remain to pay
+		if ($amountofpayment == 0 || $amountofpayment > $remaintopay) $payment->amounts[$invoice->id] = $remaintopay;
 
-			$payment->paiementid = $paiementid;
-			$payment->num_payment = $invoice->ref;
+		$payment->paiementid = $paiementid;
+		$payment->num_payment = $invoice->ref;
+//FJA
+		if ($amountofpayment>$remaintopay) {
+                  $payment->note='RCP'+$amountofpayment;
+                  $invoice->note_private= $amountofpayment-$remaintopay;
+                  $invoice->update($user);
+               }
+//END FJA
+		$payment->create($user);
+		$payment->addPaymentToBank($user, 'payment', '(CustomerInvoicePayment)', $bankaccount, '', '');
 
-			$payment->create($user);
-			$payment->addPaymentToBank($user, 'payment', '(CustomerInvoicePayment)', $bankaccount, '', '');
-			$remaintopay = $invoice->getRemainToPay();    // Recalculate remain to pay after the payment is recorded
-		}
-
+		$remaintopay = $invoice->getRemainToPay(); // Recalculate remain to pay after the payment is recorded
 		if ($remaintopay == 0) {
 			dol_syslog("Invoice is paid, so we set it to status Paid");
 			$result = $invoice->set_paid($user);
@@ -293,7 +301,7 @@ if (($action == "addline" || $action == "freezone") && $placeid == 0)
 if ($action == "addline")
 {
 	$prod = new Product($db);
-    $prod->fetch($idproduct);
+	$prod->fetch($idproduct);
 
 	$customer = new Societe($db);
 	$customer->fetch($invoice->socid);
@@ -304,6 +312,7 @@ if ($action == "addline")
 	$price_ttc = $datapriceofproduct['pu_ttc'];
 	//$price_min = $datapriceofproduct['price_min'];
 	$price_base_type = $datapriceofproduct['price_base_type'];
+	$pa_ht=$datapriceofproduct['pa_ht'];
 	$tva_tx = $datapriceofproduct['tva_tx'];
 	$tva_npr = $datapriceofproduct['tva_npr'];
 
@@ -343,7 +352,7 @@ if ($action == "addline")
 	}
 	if ($idoflineadded <= 0) {
 		$invoice->fetch_thirdparty();
-		$idoflineadded = $invoice->addline($prod->description, $price, 1, $tva_tx, $localtax1_tx, $localtax2_tx, $idproduct, $customer->remise_percent, '', 0, 0, 0, '', $price_base_type, $price_ttc, $prod->type, -1, 0, '', 0, $parent_line, null, '', '', 0, 100, '', null, 0);
+		$idoflineadded = $invoice->addline($prod->description, $price, 1, $tva_tx, $localtax1_tx, $localtax2_tx, $idproduct, $customer->remise_percent, '', 0, 0, 0, '', $price_base_type, $price_ttc, $prod->type, -1, 0, '', 0, $parent_line, null,$prod->pa_ht, '', 0, 100, '', null, 0);
 	}
 
 	$invoice->fetch($placeid);
@@ -441,7 +450,20 @@ if ($action == "updateqty")
     {
         if ($line->id == $idline)
         {
-            $result = $invoice->updateline($line->id, $line->desc, $line->subprice, $number, $line->remise_percent, $line->date_start, $line->date_end, $line->tva_tx, $line->localtax1_tx, $line->localtax2_tx, 'HT', $line->info_bits, $line->product_type, $line->fk_parent_line, 0, $line->fk_fournprice, $line->pa_ht, $line->label, $line->special_code, $line->array_options, $line->situation_percent, $line->fk_unit);
+		if ($number<0)
+		{
+		 	if ($number <-2) 
+			{
+				$number=$number/1000;
+			}
+//    	            console.log("net "+ $line->qty+$number);
+// 		    console.log("tare "+ $line->tare);
+		    $result = $invoice->updateline($line->id, $line->desc, $line->subprice, $line->qty+$number, $line->remise_percent, $line->date_start, $line->date_end, $line->tva_tx, $line->localtax1_tx, $line->localtax2_tx, 'HT', $line->info_bits, $line->product_type, $line->fk_parent_line, 0, $line->fk_fournprice, $line->pa_ht, $line->label, $line->special_code, $line->array_options, $line->situation_percent, $line->fk_unit);
+		}
+		else
+		{
+ 		    $result = $invoice->updateline($line->id, $line->desc, $line->subprice, $number, $line->remise_percent, $line->date_start, $line->date_end, $line->tva_tx, $line->localtax1_tx, $line->localtax2_tx, 'HT', $line->info_bits, $line->product_type, $line->fk_parent_line, 0, $line->fk_fournprice, $line->pa_ht, $line->label, $line->special_code, $line->array_options, $line->situation_percent, $line->fk_unit);
+		}
         }
     }
 
@@ -606,6 +628,7 @@ if ($action == "valid" || $action == "history")
 
     if ($remaintopay <= 0 && $conf->global->TAKEPOS_AUTO_PRINT_TICKETS) $sectionwithinvoicelink .= '<script language="javascript">$("#buttonprint").click();</script>';
 }
+
 
 /*
  * View
@@ -881,6 +904,8 @@ if ($mobilepage == "invoice" || $mobilepage == "") {
 }
 if ($_SESSION["basiclayout"] != 1)
 {
+// Modif FJA adding unit price to ticket
+        print '<td class="linecolqty right">'.$langs->trans('Price').'</td>';
 	print '<td class="linecolqty right">'.$langs->trans('ReductionShort').'</td>';
 	print '<td class="linecolqty right">'.$langs->trans('Qty').'</td>';
 	print '<td class="linecolht right nowraponall">'.$langs->trans('TotalTTCShort').'</td>';
@@ -995,6 +1020,8 @@ if ($placeid > 0)
 				$htmlsupplements[$line->fk_parent_line] .= '</td>';
 				if ($_SESSION["basiclayout"] != 1)
 				{
+
+// here also??
 					$htmlsupplements[$line->fk_parent_line] .= '<td class="right">'.vatrate($line->remise_percent, true).'</td>';
 					$htmlsupplements[$line->fk_parent_line] .= '<td class="right">'.$line->qty.'</td>';
 					$htmlsupplements[$line->fk_parent_line] .= '<td class="right">'.price($line->total_ttc).'</td>';
@@ -1058,6 +1085,9 @@ if ($placeid > 0)
 				//$moreinfo .= $langs->trans("TotalHT").': '.$line->total_ht;
 
 				$htmlforlines .= '</td>';
+// addition FJA for unit Price
+				$puhtx = ROUND(100*($line->subprice*(1+$line->tva_tx/100)))/100;
+                                $htmlforlines .= '<td class="right">'.price($puhtx).'</td>';
 				$htmlforlines .= '<td class="right">'.vatrate($line->remise_percent, true).'</td>';
 				$htmlforlines .= '<td class="right">'.$line->qty.'</td>';
 				$htmlforlines .= '<td class="right classfortooltip" title="'.$moreinfo.'">'.price($line->total_ttc).'</td>';
